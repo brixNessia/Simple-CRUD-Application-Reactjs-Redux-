@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from 'react-bootstrap'
 import { useSelector, useDispatch } from 'react-redux'
 
@@ -7,7 +7,7 @@ import FormModalComponent from './components/FormModalComponent';
 
 import './product.css';
 
-import * as actions from '../../store/product/actionCreator';
+import { fetchProducts, createProduct, updateProduct, deleteProduct} from '../../services/productService';
 
 import { validation } from './validation'
 
@@ -18,8 +18,9 @@ function Product() {
   const [error, setError] = useState({})
 
   const data = useSelector((state) => state?.product?.data || [])
+  const status = useSelector((state) => state?.product?.status || false)
 
-  const [formData, setFormData] = useState({id: '', product_name: '', product_description: ''});
+  const [formData, setFormData] = useState({product_name: '', product_description: ''});
 
   const handleClose = () => setShow(false);
   const handleCreate = () => {
@@ -37,8 +38,7 @@ function Product() {
   const handleSubmit = () => {
     const result = validation(formData);
     if (result.code === 200) {
-      dispatch(actions.actionCreateProduct({...formData, id: data.length + 1}))
-      setShow(false);
+      dispatch(createProduct(formData)).then(() => setShow(false))
     } 
     setError(result)
   }
@@ -54,21 +54,30 @@ function Product() {
   const handleEdit = () => {
     const result = validation(formData);
     if (result.code === 200) {
-      const productIndex = data.findIndex(value => value.id === formData.id)
-      data[productIndex] = formData
-      dispatch(actions.actionUpdateProduct(data))
-      setShow(false)
+      dispatch(updateProduct(formData, formData.id)).then(() => setShow(false))
     } 
     setError(result)
   }
 
   const handleDelete = (id) => {
-    const newSetArray = data.filter(value => value.id !== id)
-    dispatch(actions.actionDeleteProduct(newSetArray))
+    dispatch(deleteProduct(id))
   }
+
+  useEffect(() => {
+    dispatch(fetchProducts())
+  }, [data.length, dispatch])
 
   return (
     <div>
+        {status && (
+        <div className="loading">
+          <div className="spinner">
+            <div className="spinner-grow text-primary" role="status" style={{width: '10rem', height: '10rem'}}>
+              <span className="sr-only">Loading...</span>
+            </div>
+          </div>
+        </div>
+      )}
       <Button variant="primary" onClick={handleCreate} className="productCreateButton">Create Product</Button>
       <FormModalComponent 
         handleClose={handleClose} 
@@ -80,7 +89,7 @@ function Product() {
         data={data}
         error={error}
       />
-      <ProductList data={data} handleGetSelectedProduct={handleGetSelectedProduct} handleDelete={handleDelete}/>
+      <ProductList data={data || []} handleGetSelectedProduct={handleGetSelectedProduct} handleDelete={handleDelete}/>
     </div>
   )
 }
